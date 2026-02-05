@@ -59,8 +59,18 @@ class WatchlistManager:
         )
 
     def _load_defaults(self) -> None:
-        """Load default symbols from settings"""
+        """Load default symbols from settings, including crypto if enabled"""
         defaults = set(settings.default_symbols)
+
+        # Always include all crypto symbols for comprehensive coverage
+        # Crypto trades 24/7, so we want them in our watchlist
+        crypto_symbols = settings.crypto.symbols if hasattr(settings, 'crypto') else []
+        if crypto_symbols:
+            # Convert BTC/USD format to match our internal format
+            for crypto in crypto_symbols:
+                defaults.add(crypto)
+            logger.info("crypto_symbols_added_to_watchlist", count=len(crypto_symbols))
+
         self._tier3 = defaults
         self._symbols = defaults
         self._last_update = datetime.now()

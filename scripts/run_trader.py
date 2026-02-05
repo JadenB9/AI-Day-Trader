@@ -15,7 +15,7 @@ sys.path.insert(0, '/Users/jaden/Library/Mobile Documents/com~apple~CloudDocs/Pr
 
 from config.settings import get_settings
 from src.utils.logging import setup_logging
-from src.utils.helpers import is_market_open, is_premarket, get_eastern_time, time_until_market_open
+from src.utils.helpers import is_market_open, is_premarket, get_eastern_time, time_until_market_open, get_trading_capital, is_capital_depleted, get_available_capital
 from src.core.event_bus import get_event_bus, EventType, Event
 from src.data.streams.alpaca_stream import AlpacaStream
 from src.data.historical.alpaca_client import get_historical_client
@@ -54,14 +54,32 @@ class TradingEngine:
         self._decision_engine = None
         self._order_manager = None
         self._broker = None
+        self._researcher = None  # Market researcher
 
         # State
         self._portfolio_state: Optional[PortfolioState] = None
         self._snapshots = {}
+        self._last_research_time = None
+        self._cycle_count = 0
 
     async def start(self) -> None:
         """Initialize and start the trading engine"""
         logger.info("trading_engine_starting", dry_run=self.dry_run)
+
+        # Test connections first
+        from src.utils.connection_test import test_all_connections
+        logger.info("testing_connections")
+        conn_results = await test_all_connections()
+
+        if not conn_results['all_passed']:
+            logger.error("connection_tests_failed", results=conn_results)
+            if not conn_results['alpaca']['connected']:
+                raise RuntimeError("Alpaca API connection failed. Check your API keys.")
+            if not conn_results['claude']['connected']:
+                logger.warning("claude_api_failed", error=conn_results['claude'].get('error'))
+                # Continue but log warning - AI features may not work
+
+        logger.info("connections_verified")
 
         # Initialize database
         await init_db()
@@ -74,21 +92,37 @@ class TradingEngine:
         self._broker = get_broker()
         account = await self._broker.get_account()
 
+        # Calculate trading capital (virtual or actual)
+        actual_equity = account['equity']
+        trading_capital = get_trading_capital(actual_equity)
+        available_capital = get_available_capital(actual_equity)
+
         logger.info(
             "account_loaded",
-            equity=account['equity'],
-            buying_power=account['buying_power']
+            actual_equity=actual_equity,
+            trading_capital=trading_capital,
+            available_capital=available_capital,
+            virtual_mode=settings.portfolio.virtual_capital > 0
         )
 
-        # Initialize limits manager
-        init_limits_manager(account['equity'])
+        # Check if capital is depleted
+        if is_capital_depleted(actual_equity):
+            logger.error(
+                "capital_depleted",
+                actual_equity=actual_equity,
+                reserve=settings.portfolio.capital_reserve
+            )
+            raise RuntimeError(f"Capital depleted. Equity ${actual_equity:.2f} is at or below reserve ${settings.portfolio.capital_reserve:.2f}")
 
-        # Initialize portfolio state
+        # Initialize limits manager with trading capital (not actual equity)
+        init_limits_manager(trading_capital)
+
+        # Initialize portfolio state with trading capital
         positions = await self._broker.get_positions()
         self._portfolio_state = PortfolioState(
-            equity=account['equity'],
-            cash=account['cash'],
-            buying_power=account['buying_power'],
+            equity=trading_capital,  # Use trading capital, not actual
+            cash=min(account['cash'], available_capital),
+            buying_power=min(account['buying_power'], available_capital),
             positions=positions,
             daily_pnl=0,
             open_risk=0
@@ -115,23 +149,106 @@ class TradingEngine:
         # Initialize indicator calculator
         self._calculator = get_calculator()
 
+        # Initialize market researcher
+        from src.ai.market_research import get_researcher
+        self._researcher = get_researcher()
+
         # Set up signal handlers
         self._setup_signal_handlers()
 
         self._running = True
 
+        # Run initial market research
+        logger.info("running_initial_market_research")
+        try:
+            await self._run_market_research()
+        except Exception as e:
+            logger.warning("initial_research_failed", error=str(e))
+
         # Run main loop
         await self._main_loop()
+
+    async def _run_market_research(self) -> None:
+        """
+        Run hourly market research - THIS IS THE ONLY TIME AI IS CALLED.
+
+        The AI searches the web for news on all symbols, analyzes sentiment,
+        and caches the results. These cached results are used for the next hour
+        to filter trading signals without making additional AI calls.
+        """
+        if not self._researcher:
+            return
+
+        symbols = list(self._watchlist.symbols) if self._watchlist else settings.default_symbols
+
+        logger.info("running_market_research", symbols=len(symbols))
+
+        # Log start of AI research
+        try:
+            from api.routers.system import log_activity
+            log_activity(
+                "research",
+                "Hourly AI Research Starting",
+                f"Researching {len(symbols)} symbols with web search. This is the only AI call for the next hour.",
+                {"symbols": symbols[:10], "total_symbols": len(symbols)}
+            )
+        except ImportError:
+            pass
+
+        try:
+            from src.ai.market_research import run_hourly_research
+            results = await run_hourly_research(symbols)
+            self._last_research_time = datetime.now()
+
+            logger.info(
+                "market_research_complete",
+                symbols=results.get('symbols_researched'),
+                sentiment=results.get('sentiment_summary')
+            )
+
+            # Log completion
+            try:
+                from api.routers.system import log_activity
+                sentiment = results.get('sentiment_summary', {})
+                log_activity(
+                    "research",
+                    "Hourly AI Research Complete",
+                    f"Bullish: {sentiment.get('bullish', 0)}, Bearish: {sentiment.get('bearish', 0)}, Neutral: {sentiment.get('neutral', 0)}",
+                    {
+                        "symbols_researched": results.get('symbols_researched'),
+                        "sentiment_summary": sentiment,
+                        "high_confidence": results.get('high_confidence', [])
+                    }
+                )
+            except ImportError:
+                pass
+
+        except Exception as e:
+            logger.error("market_research_error", error=str(e))
+            try:
+                from api.routers.system import log_activity
+                log_activity(
+                    "error",
+                    "Research Failed",
+                    f"Hourly research failed: {str(e)[:100]}",
+                    {"error": str(e)}
+                )
+            except ImportError:
+                pass
 
     async def _main_loop(self) -> None:
         """Main trading loop"""
         logger.info("main_loop_started")
 
         historical = get_historical_client()
-        cycle_count = 0
 
         while self._running and not self._shutdown_event.is_set():
             try:
+                # Check if hourly research is due
+                if self._last_research_time is None or \
+                   (datetime.now() - self._last_research_time).total_seconds() > 3600:
+                    await self._run_market_research()
+
                 # Check market status
                 if not is_market_open(extended_hours=settings.trading_hours.extended_hours_enabled):
                     wait_time = time_until_market_open()
@@ -144,7 +261,7 @@ class TradingEngine:
                         await asyncio.sleep(60)
                         continue
 
-                cycle_count += 1
+                self._cycle_count += 1
                 cycle_start = datetime.now()
 
                 # Update portfolio state
@@ -172,7 +289,25 @@ class TradingEngine:
                     )
 
                 cycle_time = (datetime.now() - cycle_start).total_seconds()
-                logger.debug("cycle_complete", cycle=cycle_count, time_sec=cycle_time)
+                logger.debug("cycle_complete", cycle=self._cycle_count, time_sec=cycle_time)
+
+                # Log cycle to activity feed (every 12 cycles = ~1 min)
+                if self._cycle_count % 12 == 0:
+                    try:
+                        from api.routers.system import log_activity
+                        log_activity(
+                            "info",
+                            f"Trading Cycle #{self._cycle_count}",
+                            f"Processed {len(symbols)} symbols in {cycle_time:.2f}s. Positions: {len(self._portfolio_state.positions)}",
+                            {
+                                "cycle": self._cycle_count,
+                                "symbols_processed": len(symbols),
+                                "cycle_time_sec": round(cycle_time, 2),
+                                "positions": len(self._portfolio_state.positions)
+                            }
+                        )
+                    except ImportError:
+                        pass
 
                 # Single cycle mode
                 if self.single_cycle:
@@ -188,7 +323,7 @@ class TradingEngine:
                 logger.error("main_loop_error", error=str(e), exc_info=True)
                 await asyncio.sleep(10)
 
-        logger.info("main_loop_stopped", cycles=cycle_count)
+        logger.info("main_loop_stopped", cycles=self._cycle_count)
 
     async def _process_symbol(self, symbol: str, historical) -> None:
         """Process a single symbol - fetch data, calculate indicators, generate signals"""
@@ -197,6 +332,24 @@ class TradingEngine:
 
         if not snapshot.bars_1m:
             return
+
+        # Log data fetch (occasionally, not every symbol)
+        if self._cycle_count % 60 == 1:  # Every ~5 min
+            try:
+                from api.routers.system import log_activity
+                current_price = snapshot.bars_1m[-1].close if snapshot.bars_1m else 0
+                log_activity(
+                    "data",
+                    f"Data: {symbol}",
+                    f"Fetched {len(snapshot.bars_1m)} bars. Current: ${current_price:.2f}",
+                    {
+                        "symbol": symbol,
+                        "bars_1m": len(snapshot.bars_1m),
+                        "current_price": current_price
+                    }
+                )
+            except (ImportError, Exception):
+                pass
 
         # Calculate indicators
         snapshot = enrich_snapshot(snapshot)
@@ -212,41 +365,86 @@ class TradingEngine:
         if not signals:
             return
 
+        # Log signals generated
+        try:
+            from api.routers.system import log_activity
+            for sig in signals:
+                log_activity(
+                    "signal",
+                    f"Signal: {sig.direction.value.upper()} {symbol}",
+                    f"Strategy: {sig.strategy}. Confidence: {sig.confidence*100:.0f}%",
+                    {
+                        "symbol": symbol,
+                        "direction": sig.direction.value,
+                        "strategy": sig.strategy,
+                        "confidence": sig.confidence,
+                        "entry": sig.entry_price
+                    }
+                )
+        except ImportError:
+            pass
+
         # Process each signal
         for signal in signals:
             await self._process_signal(signal, snapshot)
 
     async def _process_signal(self, signal, snapshot) -> None:
-        """Process a trading signal through AI and execution"""
-        # Check if AI evaluation needed
-        needs_ai = await self._decision_engine.should_evaluate(signal)
+        """
+        Process a trading signal using CACHED hourly research (no real-time AI calls).
 
-        if needs_ai:
-            # Get AI decision
-            decision = await self._decision_engine.evaluate(
-                signal,
-                snapshot,
-                {
-                    'equity': self._portfolio_state.equity,
-                    'position_count': len(self._portfolio_state.positions),
-                    'daily_pnl_pct': self._portfolio_state.daily_pnl / self._portfolio_state.equity if self._portfolio_state.equity > 0 else 0,
-                    'portfolio_heat': self._portfolio_state.open_risk / self._portfolio_state.equity if self._portfolio_state.equity > 0 else 0
-                }
+        Flow:
+        1. Check cached research sentiment for the symbol
+        2. If research is bearish → skip the trade
+        3. If research is neutral/bullish → proceed with technical signal
+        4. AI is only called HOURLY during research, not per-signal
+        """
+        # Get cached research (updated hourly, no API call)
+        research = None
+        if self._researcher:
+            research = self._researcher.get_cached_research(signal.symbol)
+
+        # Only skip on VERY STRONG bearish sentiment (85%+ confidence) - AGGRESSIVE SETTINGS
+        # Previously skipped at 60% confidence, now only skip on extreme bearish calls
+        if research and research.sentiment == "bearish" and research.confidence >= 85:
+            logger.info(
+                "signal_skipped_strong_bearish",
+                symbol=signal.symbol,
+                strategy=signal.strategy,
+                research_sentiment=research.sentiment,
+                research_confidence=research.confidence
             )
-
-            if decision.is_rejected:
-                logger.info(
-                    "signal_ai_rejected",
-                    symbol=signal.symbol,
-                    strategy=signal.strategy,
-                    reason=decision.reasoning
+            try:
+                from api.routers.system import log_activity
+                log_activity(
+                    "signal",
+                    f"Skipped: {signal.symbol}",
+                    f"STRONG bearish research ({research.confidence}% confidence). Strategy: {signal.strategy}",
+                    {
+                        "symbol": signal.symbol,
+                        "strategy": signal.strategy,
+                        "research_sentiment": research.sentiment,
+                        "research_confidence": research.confidence,
+                        "skip_reason": "strong_bearish_research"
+                    }
                 )
-                return
+            except ImportError:
+                pass
+            return
 
-            if decision.is_modified:
-                signal = self._decision_engine.apply_modifications(signal, decision)
+        # Log research-backed trade
+        research_note = ""
+        if research:
+            research_note = f" Research: {research.sentiment} ({research.confidence}%)"
 
-        # Execute the signal
+        logger.info(
+            "signal_approved_by_research",
+            symbol=signal.symbol,
+            strategy=signal.strategy,
+            research_sentiment=research.sentiment if research else "none",
+            research_confidence=research.confidence if research else 0
+        )
+
+        # Execute the signal (no AI call - uses cached research)
         order = await self._order_manager.execute_signal(
             signal,
             self._portfolio_state,
@@ -262,11 +460,46 @@ class TradingEngine:
                 direction=signal.direction.value,
                 shares=order.quantity
             )
+            # Log trade execution with research context
+            try:
+                from api.routers.system import log_activity
+                research_info = ""
+                if research:
+                    research_info = f" | Research: {research.sentiment} ({research.confidence}%)"
+
+                log_activity(
+                    "trade",
+                    f"Trade: {signal.direction.value.upper()} {signal.symbol}",
+                    f"Strategy: {signal.strategy}. Shares: {order.quantity}. Entry: ${signal.entry_price:.2f}{research_info}",
+                    {
+                        "symbol": signal.symbol,
+                        "direction": signal.direction.value,
+                        "strategy": signal.strategy,
+                        "shares": order.quantity,
+                        "entry_price": signal.entry_price,
+                        "stop_loss": signal.stop_loss,
+                        "take_profit": signal.take_profit,
+                        "research_sentiment": research.sentiment if research else None,
+                        "research_confidence": research.confidence if research else None
+                    }
+                )
+            except ImportError:
+                pass
 
     async def _update_portfolio_state(self) -> None:
         """Update portfolio state from broker"""
         account = await self._broker.get_account()
         positions = await self._broker.get_positions()
+
+        actual_equity = account['equity']
+        trading_capital = get_trading_capital(actual_equity)
+        available_capital = get_available_capital(actual_equity)
+
+        # Check for capital depletion
+        if is_capital_depleted(actual_equity):
+            logger.error("capital_depleted_during_trading", actual_equity=actual_equity)
+            self._running = False
+            return
 
         # Calculate open risk
         open_risk = 0
@@ -274,18 +507,30 @@ class TradingEngine:
             entry = pos.get('avg_entry_price', 0)
             current = pos.get('current_price', entry)
             qty = abs(pos.get('qty', 0))
-            # Simplified risk calc
             risk_per_share = abs(current - entry) if entry != 0 else current * 0.02
             open_risk += qty * risk_per_share
 
+        # Track P&L relative to trading capital
+        prev_equity = self._portfolio_state.equity if self._portfolio_state else trading_capital
+
         self._portfolio_state = PortfolioState(
-            equity=account['equity'],
-            cash=account['cash'],
-            buying_power=account['buying_power'],
+            equity=trading_capital,
+            cash=min(account['cash'], available_capital),
+            buying_power=min(account['buying_power'], available_capital),
             positions=positions,
-            daily_pnl=account['equity'] - self._portfolio_state.equity if self._portfolio_state else 0,
+            daily_pnl=trading_capital - prev_equity,
             open_risk=open_risk
         )
+
+        # Log capital status periodically
+        if self._cycle_count % 60 == 0:  # Every ~5 minutes
+            logger.info(
+                "capital_status",
+                trading_capital=trading_capital,
+                available=available_capital,
+                open_risk=open_risk,
+                positions=len(positions)
+            )
 
         # Update validator
         get_validator().update_portfolio(self._portfolio_state)

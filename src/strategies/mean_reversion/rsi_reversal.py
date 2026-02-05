@@ -37,17 +37,17 @@ class RSIReversal(Strategy):
         if config is None:
             config = StrategyConfig(
                 name="rsi_reversal",
-                min_confidence=0.60,
-                ai_threshold=0.80,
-                max_position_pct=0.018,
-                default_stop_atr_mult=1.5,
-                default_target_atr_mult=2.0,
+                min_confidence=0.40,  # Lowered from 0.60 - AGGRESSIVE
+                ai_threshold=0.55,  # Lowered from 0.80
+                max_position_pct=0.04,  # Increased from 0.018
+                default_stop_atr_mult=2.0,  # Wider stops
+                default_target_atr_mult=2.5,
                 params={
-                    'rsi_oversold': 30,
-                    'rsi_overbought': 70,
-                    'lookback_bars': 20,  # For swing detection
-                    'require_divergence': False,  # Optional confirmation
-                    'min_swing_separation': 3,  # Bars between swings
+                    'rsi_oversold': 35,  # Widened from 30
+                    'rsi_overbought': 65,  # Widened from 70
+                    'lookback_bars': 15,  # Reduced from 20
+                    'require_divergence': False,
+                    'min_swing_separation': 2,  # Reduced from 3
                 }
             )
         super().__init__(config)
@@ -244,7 +244,7 @@ class RSIReversal(Strategy):
         if rvol > 1.3:
             score += 5
 
-        valid = score >= 45
+        valid = score >= 30  # Lowered from 45 - AGGRESSIVE
 
         return {
             'valid': valid,
@@ -330,7 +330,7 @@ class RSIReversal(Strategy):
         if rvol > 1.3:
             score += 5
 
-        valid = score >= 45
+        valid = score >= 30  # Lowered from 45 - AGGRESSIVE
 
         return {
             'valid': valid,

@@ -96,10 +96,10 @@ async def show_dashboard():
 
             # Footer
             print("\n" + "=" * 60)
-            print("  Press Ctrl+C to exit | Refreshes every 10 seconds")
+            print("  Press Ctrl+C to exit | Refreshes every 2 seconds")
             print("=" * 60)
 
-            await asyncio.sleep(10)
+            await asyncio.sleep(2)
 
         except KeyboardInterrupt:
             print("\n\nMonitoring stopped.")

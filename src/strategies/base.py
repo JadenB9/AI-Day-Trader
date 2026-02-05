@@ -28,6 +28,11 @@ class SignalStrength(str, Enum):
     VERY_STRONG = "very_strong"
 
 
+class AssetClass(str, Enum):
+    STOCK = "us_equity"
+    CRYPTO = "crypto"
+
+
 @dataclass
 class Signal:
     """
@@ -63,6 +68,9 @@ class Signal:
 
     # Expiration
     valid_until: Optional[datetime] = None
+
+    # Asset class (stock or crypto)
+    asset_class: AssetClass = AssetClass.STOCK
 
     def __post_init__(self):
         # Calculate R:R if we have entry, stop, and target
@@ -101,25 +109,26 @@ class Signal:
             'risk_reward_ratio': self.risk_reward_ratio,
             'reasoning': self.reasoning,
             'indicators': self.indicators_used,
-            'timestamp': self.timestamp.isoformat()
+            'timestamp': self.timestamp.isoformat(),
+            'asset_class': self.asset_class.value
         }
 
 
 @dataclass
 class StrategyConfig:
-    """Configuration for a strategy"""
+    """Configuration for a strategy - AGGRESSIVE DEFAULTS"""
     name: str
     enabled: bool = True
     symbols: Set[str] = field(default_factory=set)  # Empty = all symbols
 
-    # Confidence thresholds
-    min_confidence: float = 0.6
-    ai_threshold: float = 0.8  # Above this, send to AI
+    # Confidence thresholds - LOWERED FOR AGGRESSIVE TRADING
+    min_confidence: float = 0.40  # Lowered from 0.6 - generate more signals
+    ai_threshold: float = 0.55  # Lowered from 0.8 - more signals get through
 
-    # Risk parameters
-    max_position_pct: float = 0.02  # Max 2% per position
-    default_stop_atr_mult: float = 2.0
-    default_target_atr_mult: float = 3.0
+    # Risk parameters - INCREASED FOR AGGRESSIVE TRADING
+    max_position_pct: float = 0.05  # Increased from 0.02 - 5% per position
+    default_stop_atr_mult: float = 2.5  # Wider stops to avoid getting stopped out
+    default_target_atr_mult: float = 3.5  # Better R:R
 
     # Time filters
     trade_premarket: bool = True

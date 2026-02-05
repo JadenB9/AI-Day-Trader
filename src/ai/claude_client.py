@@ -26,9 +26,12 @@ class ClaudeClient:
         self._max_tokens = settings.anthropic.max_tokens
         self._temperature = settings.anthropic.temperature
 
-        # Rate limiting
+        # Rate limiting - conservative to avoid hitting limits
+        # Tier 1 limit: 50 requests/minute = ~1.2 sec between requests
         self._last_request_time = 0
-        self._min_request_interval = 0.5  # 500ms between requests
+        self._min_request_interval = 2.0  # 2 seconds between requests (30 req/min max)
+        self._requests_this_minute = 0
+        self._minute_start = time.time()
 
         # Stats
         self._request_count = 0
@@ -64,24 +67,25 @@ class ClaudeClient:
             # Build request
             messages = [{"role": "user", "content": user_prompt}]
 
-            # Tools
-            tools = []
+            # Build request kwargs
+            request_kwargs = {
+                "model": self._model,
+                "max_tokens": max_tokens or self._max_tokens,
+                "temperature": temperature if temperature is not None else self._temperature,
+                "system": system_prompt,
+                "messages": messages,
+            }
+
+            # Add tools only if web search enabled
             if use_web_search:
-                tools.append({
+                request_kwargs["tools"] = [{
                     "type": "web_search_20250305",
                     "name": "web_search",
                     "max_uses": 3
-                })
+                }]
 
             # Make request
-            response = await self._client.messages.create(
-                model=self._model,
-                max_tokens=max_tokens or self._max_tokens,
-                temperature=temperature if temperature is not None else self._temperature,
-                system=system_prompt,
-                messages=messages,
-                tools=tools if tools else None
-            )
+            response = await self._client.messages.create(**request_kwargs)
 
             # Process response
             content = self._extract_content(response)
@@ -99,6 +103,23 @@ class ClaudeClient:
                 response_time_ms=response_time
             )
 
+            # Log to activity feed
+            try:
+                from api.routers.system import log_activity
+                log_activity(
+                    "ai",
+                    "AI Response",
+                    f"Claude responded in {response_time}ms using {tokens_used} tokens",
+                    {
+                        "tokens": tokens_used,
+                        "response_time_ms": response_time,
+                        "web_search": use_web_search,
+                        "model": self._model
+                    }
+                )
+            except ImportError:
+                pass  # API not running
+
             return {
                 'content': content,
                 'tokens_used': tokens_used,
@@ -110,8 +131,34 @@ class ClaudeClient:
         except Exception as e:
             error_msg = str(e)
 
-            if "rate_limit" in error_msg.lower():
-                raise AIRateLimitError(f"Rate limit hit: {error_msg}")
+            if "rate_limit" in error_msg.lower() or "429" in error_msg:
+                # Auto-retry with wait for rate limits
+                logger.warning("rate_limit_hit_retrying", error=error_msg[:100])
+
+                # Wait 60 seconds and retry once
+                logger.info("rate_limit_wait", seconds=65)
+                await asyncio.sleep(65)
+
+                try:
+                    response = await self._client.messages.create(**request_kwargs)
+                    content = self._extract_content(response)
+                    tokens_used = response.usage.input_tokens + response.usage.output_tokens
+                    response_time = int((time.time() - start_time) * 1000)
+
+                    self._request_count += 1
+                    self._total_tokens += tokens_used
+
+                    return {
+                        'content': content,
+                        'tokens_used': tokens_used,
+                        'response_time_ms': response_time,
+                        'model': self._model,
+                        'web_search_used': use_web_search,
+                        'retried': True
+                    }
+                except Exception as retry_error:
+                    raise AIRateLimitError(f"Rate limit hit after retry: {str(retry_error)}")
+
             elif "timeout" in error_msg.lower():
                 raise AITimeoutError(f"Request timed out: {error_msg}")
             else:
@@ -131,14 +178,36 @@ class ClaudeClient:
         return "\n".join(content_parts)
 
     async def _rate_limit(self) -> None:
-        """Implement simple rate limiting"""
-        now = time.time()
-        elapsed = now - self._last_request_time
+        """
+        Implement rate limiting to stay under Tier 1 limits:
+        - 50 requests/minute
+        - 30K input tokens/minute
 
+        We use conservative limits to avoid hitting the rate limit.
+        """
+        now = time.time()
+
+        # Reset counter every minute
+        if now - self._minute_start > 60:
+            self._requests_this_minute = 0
+            self._minute_start = now
+
+        # If we've made 25+ requests this minute, wait until next minute
+        if self._requests_this_minute >= 25:
+            wait_time = 60 - (now - self._minute_start)
+            if wait_time > 0:
+                logger.info("rate_limit_waiting", wait_seconds=wait_time)
+                await asyncio.sleep(wait_time)
+                self._requests_this_minute = 0
+                self._minute_start = time.time()
+
+        # Enforce minimum interval between requests
+        elapsed = now - self._last_request_time
         if elapsed < self._min_request_interval:
             await asyncio.sleep(self._min_request_interval - elapsed)
 
         self._last_request_time = time.time()
+        self._requests_this_minute += 1
 
     async def analyze_trade(
         self,

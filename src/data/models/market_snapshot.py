@@ -99,11 +99,14 @@ class MarketSnapshot:
     symbol: str
     timestamp: datetime
 
+    # Asset class (us_equity or crypto)
+    asset_class: str = "us_equity"
+
     # Current quote
     bid: float = 0.0
     ask: float = 0.0
     last_price: float = 0.0
-    last_size: int = 0
+    last_size: float = 0  # float for crypto fractional
 
     # Daily stats
     day_open: float = 0.0
@@ -177,6 +180,7 @@ class MarketSnapshot:
         return {
             'symbol': self.symbol,
             'timestamp': self.timestamp.isoformat(),
+            'asset_class': self.asset_class,
             'bid': self.bid,
             'ask': self.ask,
             'last_price': self.last_price,

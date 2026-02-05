@@ -75,13 +75,13 @@ class TradeValidator:
         self._portfolio = portfolio_state
         self._limits = limits_manager or get_limits_manager()
 
-        # Load limits from settings
+        # Load limits from settings - AGGRESSIVE SETTINGS
         self.max_positions = settings.portfolio.max_positions
         self.max_portfolio_heat = settings.portfolio.max_portfolio_heat
         self.max_sector_exposure = settings.portfolio.max_sector_exposure
         self.max_correlated = settings.portfolio.max_correlated_positions
-        self.min_confidence = 0.5
-        self.max_spread_pct = 0.5  # 0.5%
+        self.min_confidence = 0.30  # Lowered from 0.5 - accept lower confidence signals
+        self.max_spread_pct = 1.5  # Increased from 0.5% - allow wider spreads
 
     def update_portfolio(self, state: PortfolioState) -> None:
         """Update portfolio state"""

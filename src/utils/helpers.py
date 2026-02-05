@@ -18,11 +18,23 @@ def get_eastern_time() -> datetime:
     return datetime.now(et)
 
 
-def is_market_open(extended_hours: bool = True) -> bool:
-    """Check if market is currently open"""
+def is_crypto_symbol(symbol: str) -> bool:
+    """Check if symbol is a crypto pair (e.g., BTC/USD)"""
+    return "/" in symbol
+
+
+def is_market_open(extended_hours: bool = True, symbol: str = None) -> bool:
+    """
+    Check if market is currently open.
+    Crypto markets are always open (24/7).
+    """
+    # Crypto is always open
+    if symbol and is_crypto_symbol(symbol):
+        return True
+
     now = get_eastern_time()
 
-    # Weekend check
+    # Weekend check for stocks
     if now.weekday() >= 5:
         return False
 
@@ -166,6 +178,56 @@ def hash_dict(d: Dict) -> str:
     import json
     serialized = json.dumps(d, sort_keys=True, default=str)
     return hashlib.md5(serialized.encode()).hexdigest()
+
+
+def get_trading_capital(actual_equity: float) -> float:
+    """
+    Get effective trading capital.
+    Uses virtual_capital setting if configured, otherwise actual equity.
+
+    If virtual_capital is $1,000 and actual equity is $100,000,
+    we treat it as if we only have $1,000 to trade with.
+    """
+    from config.settings import get_settings
+    s = get_settings()
+
+    if s.portfolio.virtual_capital > 0:
+        return s.portfolio.virtual_capital
+    return actual_equity
+
+
+def is_capital_depleted(actual_equity: float) -> bool:
+    """
+    Check if trading should stop due to capital depletion.
+
+    If virtual_capital is $1,000 starting from $100,000,
+    and equity drops to $99,000 (lost $1,000), we're out of capital.
+    """
+    from config.settings import get_settings
+    s = get_settings()
+
+    if s.portfolio.capital_reserve > 0:
+        return actual_equity <= s.portfolio.capital_reserve
+    return actual_equity <= 0
+
+
+def get_available_capital(actual_equity: float) -> float:
+    """
+    Get remaining capital available for trading.
+
+    If actual equity is $100,500 and reserve is $99,000,
+    available capital is $1,500.
+    """
+    from config.settings import get_settings
+    s = get_settings()
+
+    if s.portfolio.capital_reserve > 0:
+        return max(0, actual_equity - s.portfolio.capital_reserve)
+
+    if s.portfolio.virtual_capital > 0:
+        return s.portfolio.virtual_capital
+
+    return actual_equity
 
 
 class MovingWindow:

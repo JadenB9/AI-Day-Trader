@@ -41,24 +41,24 @@ class GapAndGo(Strategy):
         if config is None:
             config = StrategyConfig(
                 name="gap_and_go",
-                min_confidence=0.65,
-                ai_threshold=0.85,
-                max_position_pct=0.025,  # Larger for confirmed gaps
-                default_stop_atr_mult=1.5,
-                default_target_atr_mult=2.5,
-                trade_premarket=False,  # Wait for market open
+                min_confidence=0.40,  # Lowered from 0.65 - AGGRESSIVE
+                ai_threshold=0.55,  # Lowered from 0.85
+                max_position_pct=0.05,  # Increased from 0.025
+                default_stop_atr_mult=2.0,  # Wider stops
+                default_target_atr_mult=3.0,
+                trade_premarket=True,  # Allow premarket trading
                 trade_regular=True,
                 params={
-                    'min_gap_pct': 4.0,
-                    'max_gap_pct': 15.0,
-                    'min_premarket_volume': 100000,
-                    'min_rvol': 2.0,
-                    'rsi_long_min': 50,
-                    'rsi_long_max': 75,
-                    'rsi_short_min': 25,
-                    'rsi_short_max': 50,
-                    'first_candle_filter': True,  # Wait for first candle close
-                    'trade_window_minutes': 60  # Best in first hour
+                    'min_gap_pct': 1.5,  # Lowered from 4.0 - trade smaller gaps
+                    'max_gap_pct': 20.0,  # Increased from 15.0
+                    'min_premarket_volume': 25000,  # Lowered from 100000
+                    'min_rvol': 1.0,  # Lowered from 2.0
+                    'rsi_long_min': 40,  # Widened from 50
+                    'rsi_long_max': 80,  # Widened from 75
+                    'rsi_short_min': 20,  # Widened from 25
+                    'rsi_short_max': 60,  # Widened from 50
+                    'first_candle_filter': False,  # Don't wait - AGGRESSIVE
+                    'trade_window_minutes': 120  # Extended from 60
                 }
             )
         super().__init__(config)
@@ -119,9 +119,10 @@ class GapAndGo(Strategy):
 
         params = self.config.params
 
-        # Volume filter
-        min_rvol = params.get('min_rvol', 2.0)
-        if rvol < min_rvol:
+        # Volume filter - relaxed for aggressive trading
+        min_rvol = params.get('min_rvol', 1.0)
+        # Skip volume filter if rvol data is missing or too restrictive
+        if rvol is not None and rvol < min_rvol * 0.5:  # Very low threshold
             return None
 
         # Determine gap direction
@@ -250,7 +251,7 @@ class GapAndGo(Strategy):
             score += 10
             reasons.append("Strong gap")
 
-        valid = score >= 55
+        valid = score >= 30  # Lowered from 55 - AGGRESSIVE
 
         return {
             'valid': valid,
@@ -319,7 +320,7 @@ class GapAndGo(Strategy):
             score += 10
             reasons.append("Strong gap")
 
-        valid = score >= 55
+        valid = score >= 30  # Lowered from 55 - AGGRESSIVE
 
         return {
             'valid': valid,

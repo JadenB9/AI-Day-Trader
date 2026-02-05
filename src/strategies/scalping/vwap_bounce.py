@@ -39,18 +39,18 @@ class VWAPBounce(Strategy):
         if config is None:
             config = StrategyConfig(
                 name="vwap_bounce",
-                min_confidence=0.60,
-                ai_threshold=0.80,
-                max_position_pct=0.02,
-                default_stop_atr_mult=1.0,
-                default_target_atr_mult=1.5,
+                min_confidence=0.40,  # Lowered from 0.60 - AGGRESSIVE
+                ai_threshold=0.55,  # Lowered from 0.80
+                max_position_pct=0.04,  # Increased from 0.02
+                default_stop_atr_mult=1.5,  # Wider stops
+                default_target_atr_mult=2.0,
                 params={
-                    'vwap_threshold_pct': 0.15,  # How close to VWAP for "touch"
-                    'min_wick_ratio': 0.5,  # Wick should be 50% of range
-                    'volume_increase_pct': 20,  # 20% above average
-                    'rsi_long_min': 35,
-                    'rsi_short_max': 65,
-                    'lookback_bars': 5,  # Recent bars to check approach
+                    'vwap_threshold_pct': 0.30,  # Widened from 0.15 - more distance allowed
+                    'min_wick_ratio': 0.3,  # Lowered from 0.5 - less strict wick
+                    'volume_increase_pct': 10,  # Lowered from 20%
+                    'rsi_long_min': 25,  # Lowered from 35
+                    'rsi_short_max': 75,  # Increased from 65
+                    'lookback_bars': 7,  # Increased from 5
                 }
             )
         super().__init__(config)
@@ -231,7 +231,7 @@ class VWAPBounce(Strategy):
         if price > bars[-1].low:
             score += 5
 
-        valid = score >= 45
+        valid = score >= 30  # Lowered from 45 - AGGRESSIVE
 
         return {
             'valid': valid,
@@ -297,7 +297,7 @@ class VWAPBounce(Strategy):
         elif rvol > 1.0:
             score += 5
 
-        valid = score >= 45
+        valid = score >= 30  # Lowered from 45 - AGGRESSIVE
 
         return {
             'valid': valid,

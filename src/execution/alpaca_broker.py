@@ -14,7 +14,8 @@ from alpaca.trading.requests import (
     LimitOrderRequest,
     StopOrderRequest,
     StopLimitOrderRequest,
-    GetOrdersRequest
+    GetOrdersRequest,
+    GetPortfolioHistoryRequest
 )
 from alpaca.trading.enums import (
     OrderSide as AlpacaOrderSide,
@@ -37,6 +38,11 @@ class OrderType(str, Enum):
     LIMIT = "limit"
     STOP = "stop"
     STOP_LIMIT = "stop_limit"
+
+
+class AssetClass(str, Enum):
+    STOCK = "us_equity"
+    CRYPTO = "crypto"
 
 
 class OrderStatus(str, Enum):
@@ -86,7 +92,7 @@ class AlpacaBroker:
         }
 
     async def get_positions(self) -> Dict[str, Dict]:
-        """Get all open positions"""
+        """Get all open positions (stocks and crypto)"""
         loop = asyncio.get_event_loop()
         positions = await loop.run_in_executor(
             None,
@@ -95,16 +101,19 @@ class AlpacaBroker:
 
         result = {}
         for pos in positions:
+            is_crypto = self._is_crypto(pos.symbol)
+            qty = float(pos.qty) if is_crypto else int(pos.qty)
             result[pos.symbol] = {
                 'symbol': pos.symbol,
-                'qty': int(pos.qty),
-                'side': 'long' if int(pos.qty) > 0 else 'short',
+                'qty': qty,
+                'side': 'long' if qty > 0 else 'short',
                 'avg_entry_price': float(pos.avg_entry_price),
                 'market_value': float(pos.market_value),
                 'current_price': float(pos.current_price),
                 'unrealized_pl': float(pos.unrealized_pl),
                 'unrealized_plpc': float(pos.unrealized_plpc),
-                'change_today': float(pos.change_today) if pos.change_today else 0
+                'change_today': float(pos.change_today) if pos.change_today else 0,
+                'asset_class': 'crypto' if is_crypto else 'us_equity'
             }
 
         return result
@@ -131,24 +140,29 @@ class AlpacaBroker:
         except Exception:
             return None
 
+    def _is_crypto(self, symbol: str) -> bool:
+        """Check if symbol is crypto (contains /)"""
+        return "/" in symbol
+
     async def submit_order(
         self,
         symbol: str,
-        qty: int,
+        qty: float,  # Changed to float for fractional crypto
         side: SignalDirection,
         order_type: OrderType = OrderType.MARKET,
         limit_price: float = None,
         stop_price: float = None,
         time_in_force: str = "day",
         extended_hours: bool = False,
-        client_order_id: str = None
+        client_order_id: str = None,
+        asset_class: AssetClass = None
     ) -> Dict[str, Any]:
         """
         Submit a new order.
 
         Args:
-            symbol: Stock symbol
-            qty: Number of shares
+            symbol: Stock or crypto symbol (crypto uses BTC/USD format)
+            qty: Number of shares/units (float for crypto)
             side: LONG (buy) or SHORT (sell)
             order_type: Market, limit, stop, stop_limit
             limit_price: Limit price (for limit orders)
@@ -156,10 +170,14 @@ class AlpacaBroker:
             time_in_force: day, gtc, ioc, fok
             extended_hours: Allow extended hours trading
             client_order_id: Custom order ID
+            asset_class: Stock or crypto (auto-detected from symbol)
 
         Returns:
             Order details dict
         """
+        # Auto-detect asset class
+        is_crypto = self._is_crypto(symbol) or asset_class == AssetClass.CRYPTO
+
         alpaca_side = AlpacaOrderSide.BUY if side == SignalDirection.LONG else AlpacaOrderSide.SELL
 
         # Time in force mapping
@@ -171,15 +189,23 @@ class AlpacaBroker:
         }
         tif = tif_map.get(time_in_force.lower(), TimeInForce.DAY)
 
+        # Crypto uses GTC by default and doesn't support extended_hours
+        if is_crypto:
+            tif = TimeInForce.GTC
+            extended_hours = False
+
         try:
             # Build order request based on type
+            # Use qty for stocks (int) or fractional qty for crypto
+            order_qty = qty if is_crypto else int(qty)
+
             if order_type == OrderType.MARKET:
                 request = MarketOrderRequest(
                     symbol=symbol,
-                    qty=qty,
+                    qty=order_qty,
                     side=alpaca_side,
                     time_in_force=tif,
-                    extended_hours=extended_hours,
+                    extended_hours=extended_hours if not is_crypto else False,
                     client_order_id=client_order_id
                 )
             elif order_type == OrderType.LIMIT:
@@ -187,11 +213,11 @@ class AlpacaBroker:
                     raise OrderError("Limit price required for limit orders")
                 request = LimitOrderRequest(
                     symbol=symbol,
-                    qty=qty,
+                    qty=order_qty,
                     side=alpaca_side,
                     time_in_force=tif,
                     limit_price=limit_price,
-                    extended_hours=extended_hours,
+                    extended_hours=extended_hours if not is_crypto else False,
                     client_order_id=client_order_id
                 )
             elif order_type == OrderType.STOP:
@@ -199,11 +225,11 @@ class AlpacaBroker:
                     raise OrderError("Stop price required for stop orders")
                 request = StopOrderRequest(
                     symbol=symbol,
-                    qty=qty,
+                    qty=order_qty,
                     side=alpaca_side,
                     time_in_force=tif,
                     stop_price=stop_price,
-                    extended_hours=extended_hours,
+                    extended_hours=extended_hours if not is_crypto else False,
                     client_order_id=client_order_id
                 )
             elif order_type == OrderType.STOP_LIMIT:
@@ -211,12 +237,12 @@ class AlpacaBroker:
                     raise OrderError("Stop and limit prices required")
                 request = StopLimitOrderRequest(
                     symbol=symbol,
-                    qty=qty,
+                    qty=order_qty,
                     side=alpaca_side,
                     time_in_force=tif,
                     stop_price=stop_price,
                     limit_price=limit_price,
-                    extended_hours=extended_hours,
+                    extended_hours=extended_hours if not is_crypto else False,
                     client_order_id=client_order_id
                 )
             else:
@@ -235,16 +261,17 @@ class AlpacaBroker:
                 'order_id': order.id,
                 'client_order_id': order.client_order_id,
                 'symbol': order.symbol,
-                'qty': int(order.qty),
+                'qty': float(order.qty) if is_crypto else int(order.qty),
                 'side': side.value,
                 'type': order_type.value,
                 'status': self._map_status(order.status),
                 'limit_price': float(order.limit_price) if order.limit_price else None,
                 'stop_price': float(order.stop_price) if order.stop_price else None,
-                'filled_qty': int(order.filled_qty) if order.filled_qty else 0,
+                'filled_qty': float(order.filled_qty) if is_crypto and order.filled_qty else (int(order.filled_qty) if order.filled_qty else 0),
                 'filled_avg_price': float(order.filled_avg_price) if order.filled_avg_price else None,
                 'created_at': order.created_at,
-                'extended_hours': order.extended_hours
+                'extended_hours': order.extended_hours,
+                'asset_class': 'crypto' if is_crypto else 'us_equity'
             }
 
             logger.info(
@@ -388,6 +415,51 @@ class AlpacaBroker:
             AlpacaOrderStatus.EXPIRED: OrderStatus.EXPIRED.value
         }
         return status_map.get(alpaca_status, alpaca_status.value)
+
+    async def get_portfolio_history(
+        self,
+        period: str = "1D",
+        timeframe: str = "5Min"
+    ) -> List[Dict]:
+        """
+        Get real portfolio equity history from Alpaca.
+
+        Args:
+            period: 1D, 1W, 1M, 3M, 1A, all
+            timeframe: 1Min, 5Min, 15Min, 1H, 1D
+
+        Returns:
+            List of {timestamp, equity, profit_loss, profit_loss_pct}
+        """
+        try:
+            request = GetPortfolioHistoryRequest(
+                period=period,
+                timeframe=timeframe
+            )
+
+            loop = asyncio.get_event_loop()
+            history = await loop.run_in_executor(
+                None,
+                lambda: self._client.get_portfolio_history(history_filter=request)
+            )
+
+            if not history or not history.timestamp:
+                return []
+
+            result = []
+            for i, ts in enumerate(history.timestamp):
+                result.append({
+                    'timestamp': datetime.fromtimestamp(ts).isoformat(),
+                    'equity': history.equity[i] if history.equity else 0,
+                    'profit_loss': history.profit_loss[i] if history.profit_loss else 0,
+                    'profit_loss_pct': history.profit_loss_pct[i] if history.profit_loss_pct else 0
+                })
+
+            return result
+
+        except Exception as e:
+            logger.error("portfolio_history_error", error=str(e))
+            return []
 
     @property
     def stats(self) -> Dict:

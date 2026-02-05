@@ -37,23 +37,23 @@ class OneMinuteScalp(Strategy):
         if config is None:
             config = StrategyConfig(
                 name="one_minute_scalp",
-                min_confidence=0.65,
-                ai_threshold=0.85,
-                max_position_pct=0.015,
-                default_stop_atr_mult=1.5,
-                default_target_atr_mult=2.0,
+                min_confidence=0.40,  # Lowered from 0.65 - AGGRESSIVE
+                ai_threshold=0.55,  # Lowered from 0.85
+                max_position_pct=0.04,  # Increased from 0.015
+                default_stop_atr_mult=2.0,  # Wider stops
+                default_target_atr_mult=2.5,
                 params={
                     'ema_fast': 9,
                     'ema_slow': 21,
                     'rsi_period': 14,
-                    'rsi_long_min': 40,
-                    'rsi_long_max': 70,
-                    'rsi_short_min': 30,
-                    'rsi_short_max': 60,
-                    'stoch_overbought': 80,
-                    'stoch_oversold': 20,
-                    'min_volume_ratio': 0.8,  # vs average
-                    'time_stop_minutes': 15
+                    'rsi_long_min': 35,  # Widened from 40
+                    'rsi_long_max': 75,  # Widened from 70
+                    'rsi_short_min': 25,  # Widened from 30
+                    'rsi_short_max': 65,  # Widened from 60
+                    'stoch_overbought': 85,  # Widened from 80
+                    'stoch_oversold': 15,  # Widened from 20
+                    'min_volume_ratio': 0.5,  # Lowered from 0.8
+                    'time_stop_minutes': 30  # Increased from 15
                 }
             )
         super().__init__(config)
@@ -236,7 +236,7 @@ class OneMinuteScalp(Strategy):
         if ema_spread_pct > 0.2:
             score += 10
 
-        valid = score >= 50
+        valid = score >= 30  # Lowered from 50 - AGGRESSIVE
 
         return {
             'valid': valid,
@@ -295,7 +295,7 @@ class OneMinuteScalp(Strategy):
             score += 10
             reasons.append("Price below EMA 9")
 
-        valid = score >= 50
+        valid = score >= 30  # Lowered from 50 - AGGRESSIVE
 
         return {
             'valid': valid,
