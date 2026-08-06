@@ -5,10 +5,11 @@ Shows real-time stats, positions, and recent activity.
 """
 import asyncio
 import sys
+from pathlib import Path
 import os
 from datetime import datetime
 
-sys.path.insert(0, '/Users/jaden/Library/Mobile Documents/com~apple~CloudDocs/Projects/AI-Day-Trader')
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from config.settings import get_settings
 from src.execution.alpaca_broker import get_broker

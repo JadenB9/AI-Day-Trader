@@ -3,6 +3,7 @@ FastAPI backend for AI Day Trader dashboard.
 Provides REST API and WebSocket endpoints for real-time monitoring.
 """
 import sys
+from pathlib import Path
 import asyncio
 from contextlib import asynccontextmanager
 from typing import Optional
@@ -12,7 +13,7 @@ from fastapi import FastAPI, Request, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-sys.path.insert(0, '/Users/jaden/Library/Mobile Documents/com~apple~CloudDocs/Projects/AI-Day-Trader')
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from config.settings import get_settings
 from api.routers import settings_router, positions, orders, strategies, risk, system

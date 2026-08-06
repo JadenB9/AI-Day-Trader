@@ -6,12 +6,13 @@ import asyncio
 import argparse
 import signal
 import sys
+from pathlib import Path
 from datetime import datetime
 from typing import Optional
 import structlog
 
 # Add project root to path
-sys.path.insert(0, '/Users/jaden/Library/Mobile Documents/com~apple~CloudDocs/Projects/AI-Day-Trader')
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from config.settings import get_settings
 from src.utils.logging import setup_logging
