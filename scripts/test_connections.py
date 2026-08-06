@@ -4,9 +4,10 @@ Test script to verify Alpaca and Claude API connections.
 Run this before starting the trading engine.
 """
 import sys
+from pathlib import Path
 import asyncio
 
-sys.path.insert(0, '/Users/jaden/Library/Mobile Documents/com~apple~CloudDocs/Projects/AI-Day-Trader')
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from config.settings import get_settings
 from src.utils.connection_test import test_all_connections, test_alpaca_connection, test_claude_connection, test_claude_web_search
