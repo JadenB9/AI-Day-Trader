@@ -1,16 +1,17 @@
 import { useQuery } from '@tanstack/react-query'
-import { BarChart3, TrendingUp, TrendingDown, Target, Clock } from 'lucide-react'
+import { BarChart3, TrendingUp, TrendingDown, Target } from 'lucide-react'
 import { fetchRiskMetrics, fetchSystemStatus } from '../api/client'
 import { api } from '../api/client'
 
 export default function Analytics() {
-  const { data: riskMetrics } = useQuery({
+  // keep these polling so the shared cache stays warm for the other pages
+  useQuery({
     queryKey: ['riskMetrics'],
     queryFn: fetchRiskMetrics,
     refetchInterval: 10000,
   })
 
-  const { data: systemStatus } = useQuery({
+  useQuery({
     queryKey: ['systemStatus'],
     queryFn: fetchSystemStatus,
     refetchInterval: 10000,

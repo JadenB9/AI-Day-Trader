@@ -15,7 +15,7 @@ import {
   Tooltip,
   ResponsiveContainer
 } from 'recharts'
-import { fetchPositions, fetchRiskMetrics, fetchSystemStatus, closeAllPositions, fetchEquityHistory } from '../api/client'
+import { fetchPositions, fetchRiskMetrics, closeAllPositions, fetchEquityHistory } from '../api/client'
 import { useTradingStore } from '../stores/tradingStore'
 import PositionTable from '../components/PositionTable'
 

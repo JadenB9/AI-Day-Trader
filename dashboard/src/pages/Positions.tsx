@@ -8,7 +8,9 @@ import {
   closeAllPositions,
   cancelOrder,
   cancelAllOrders,
-  submitOrder
+  submitOrder,
+  type Position,
+  type Order
 } from '../api/client'
 
 export default function Positions() {
@@ -33,8 +35,8 @@ export default function Positions() {
     refetchInterval: 3000,
   })
 
-  const positions = positionsData?.positions || []
-  const orders = ordersData?.orders || []
+  const positions: Position[] = positionsData?.positions || []
+  const orders: Order[] = ordersData?.orders || []
 
   const handleClose = async (symbol: string) => {
     await closePosition(symbol)

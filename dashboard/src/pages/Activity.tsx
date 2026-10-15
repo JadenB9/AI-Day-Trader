@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import {
   Terminal,
@@ -8,9 +8,6 @@ import {
   Search,
   Database,
   Zap,
-  CheckCircle,
-  XCircle,
-  Clock,
   Filter,
   Trash2,
   Download,
@@ -18,15 +15,6 @@ import {
 } from 'lucide-react'
 import { useTradingStore } from '../stores/tradingStore'
 import { api } from '../api/client'
-
-interface LogEntry {
-  id: string
-  timestamp: string
-  type: 'info' | 'trade' | 'ai' | 'data' | 'signal' | 'error' | 'research'
-  title: string
-  message: string
-  details?: Record<string, any>
-}
 
 const typeConfig = {
   info: { icon: Terminal, color: 'text-slate-400', bg: 'bg-slate-700' },
@@ -205,7 +193,8 @@ export default function Activity() {
         ) : (
           <div className="divide-y divide-slate-800">
             {filteredLogs.map((log) => {
-              const config = typeConfig[log.type]
+              // the store types log.type as a plain string; unknown kinds fall back to the info look
+              const config = typeConfig[log.type as keyof typeof typeConfig] || typeConfig.info
               const Icon = config.icon
               return (
                 <div

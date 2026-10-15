@@ -54,6 +54,8 @@ export function useWebSocket() {
     }
 
     wsRef.current = ws
+    // handleMessage is declared below and only touches store setters, so leaving it out is fine
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [setWsConnected])
 
   const handleMessage = (message: any) => {

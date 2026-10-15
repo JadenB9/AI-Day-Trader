@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
-import { Zap, Settings, TrendingUp, TrendingDown } from 'lucide-react'
-import { fetchStrategies, toggleStrategy, updateStrategyParams } from '../api/client'
+import { Zap, Settings } from 'lucide-react'
+import { fetchStrategies, toggleStrategy, updateStrategyParams, type Strategy } from '../api/client'
 
 export default function Strategies() {
   const queryClient = useQueryClient()
@@ -21,7 +21,7 @@ export default function Strategies() {
     },
   })
 
-  const strategies = data?.strategies || []
+  const strategies: Strategy[] = data?.strategies || []
 
   const handleToggle = (name: string, currentEnabled: boolean) => {
     toggleMutation.mutate({ name, enabled: !currentEnabled })
