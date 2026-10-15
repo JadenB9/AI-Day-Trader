@@ -67,3 +67,18 @@ node_modules/
 dashboard/node_modules/
 dashboard/dist/
 .vite/
+
+# Any other env flavour, but keep the example
+.env.*
+!.env.example
+
+# Runtime leftovers
+*.pid
+*.db-journal
+*.db-wal
+*.db-shm
+storage/*.db
+data/
+.ruff_cache/
+.mypy_cache/
+dashboard/coverage/
