@@ -4,14 +4,11 @@ Alpaca historical data client using alpaca-py.
 import asyncio
 from typing import List, Dict, Optional, Any
 from datetime import datetime, timedelta
-import pandas as pd
 import structlog
 
 from alpaca.data.historical import StockHistoricalDataClient
 from alpaca.data.requests import (
     StockBarsRequest,
-    StockQuotesRequest,
-    StockTradesRequest,
     StockLatestQuoteRequest,
     StockLatestBarRequest,
     StockSnapshotRequest
@@ -20,7 +17,7 @@ from alpaca.data.timeframe import TimeFrame, TimeFrameUnit
 
 from config.settings import get_settings
 from src.data.models.market_snapshot import Bar, Quote, MarketSnapshot, BarTimeframe
-from src.core.exceptions import DataError, InsufficientDataError
+from src.core.exceptions import DataError
 
 logger = structlog.get_logger()
 settings = get_settings()

@@ -2,7 +2,6 @@
 ADX (Average Directional Index) - Trend strength indicator.
 """
 from typing import List, Optional, Tuple
-import numpy as np
 
 from src.indicators.base import Indicator, get_highs, get_lows, get_closes
 from src.data.models.market_snapshot import Bar

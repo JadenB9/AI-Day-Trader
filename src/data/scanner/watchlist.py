@@ -3,14 +3,14 @@ Dynamic watchlist manager.
 Combines scanner results with default symbols.
 """
 from typing import List, Set, Dict, Optional
-from datetime import datetime, time
+from datetime import datetime
 import structlog
 
 from config.settings import get_settings
-from src.data.scanner.premarket import PremarketScanner, run_premarket_scan
-from src.data.scanner.criteria import ScannerCriteria, ScanResult, ScanType
+from src.data.scanner.premarket import PremarketScanner
+from src.data.scanner.criteria import ScanResult
 from src.core.event_bus import get_event_bus, EventType, Event
-from src.utils.helpers import is_premarket, get_eastern_time
+from src.utils.helpers import is_premarket
 
 logger = structlog.get_logger()
 settings = get_settings()

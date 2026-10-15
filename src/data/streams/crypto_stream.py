@@ -4,7 +4,6 @@ Alpaca WebSocket streaming for real-time crypto data.
 """
 import asyncio
 from typing import Set, Callable, Optional, Dict, List
-from datetime import datetime
 import structlog
 
 from alpaca.data.live import CryptoDataStream

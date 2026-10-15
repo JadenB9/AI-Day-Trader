@@ -9,7 +9,7 @@ from contextlib import asynccontextmanager
 from typing import Optional
 import structlog
 
-from fastapi import FastAPI, Request, HTTPException, Depends
+from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 

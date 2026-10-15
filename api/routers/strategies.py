@@ -1,7 +1,6 @@
 """
 Strategies router - View and manage trading strategies.
 """
-from typing import Dict, Any
 from fastapi import APIRouter, HTTPException
 
 from src.strategies.registry import get_registry

@@ -1,16 +1,15 @@
 """
 Indicator calculator - batch computation of all indicators.
 """
-from typing import List, Dict, Any, Optional, Set
-import asyncio
+from typing import List, Dict, Optional, Set
 import structlog
 
 from src.data.models.market_snapshot import Bar, MarketSnapshot
 from src.indicators.base import Indicator
-from src.indicators.momentum.rsi import RSI, StochasticRSI
+from src.indicators.momentum.rsi import RSI
 from src.indicators.momentum.macd import MACD
 from src.indicators.momentum.stochastic import Stochastic, FastStochastic
-from src.indicators.trend.ema import EMA, SMA, MultiEMA, EMACrossover
+from src.indicators.trend.ema import EMA, SMA
 from src.indicators.trend.adx import ADX
 from src.indicators.volatility.atr import ATR, ATRPercent
 from src.indicators.volatility.bollinger import BollingerBands

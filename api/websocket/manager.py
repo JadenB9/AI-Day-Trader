@@ -2,7 +2,6 @@
 WebSocket connection manager for real-time updates.
 """
 import asyncio
-import json
 from datetime import datetime
 from typing import Dict, Set, List, Any
 import structlog

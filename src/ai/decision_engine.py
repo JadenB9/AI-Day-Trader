@@ -3,19 +3,19 @@ AI Decision Engine.
 Synthesizes strategy signals with AI evaluation.
 """
 import asyncio
-from typing import Optional, Dict, List, Any
+from typing import Optional, Dict, List
 from datetime import datetime, timedelta
 from dataclasses import dataclass
 import structlog
 
 from config.settings import get_settings
-from src.ai.claude_client import get_claude_client, ClaudeClient
+from src.ai.claude_client import get_claude_client
 from src.ai.prompt_templates import (
     TRADE_ANALYSIS_SYSTEM,
     build_trade_context,
     parse_ai_response
 )
-from src.strategies.base import Signal, SignalDirection
+from src.strategies.base import Signal
 from src.data.models.market_snapshot import MarketSnapshot
 from src.core.event_bus import get_event_bus, EventType, Event
 from src.core.exceptions import AIError, AITimeoutError

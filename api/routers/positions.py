@@ -1,7 +1,6 @@
 """
 Positions router - View and manage trading positions.
 """
-from typing import Optional
 from fastapi import APIRouter, HTTPException
 
 from src.execution.alpaca_broker import get_broker

@@ -2,8 +2,6 @@
 Position sizing module.
 Determines appropriate position size based on risk parameters.
 """
-from typing import Optional
-from enum import Enum
 import structlog
 
 from config.settings import get_settings, PositionSizingMethod

@@ -3,7 +3,7 @@ Utility functions and helpers.
 """
 import asyncio
 from datetime import datetime, time, timedelta
-from typing import Any, Dict, List, Optional, TypeVar
+from typing import Dict, List, Optional, TypeVar
 import pytz
 from decimal import Decimal, ROUND_DOWN
 import hashlib

@@ -3,19 +3,17 @@ Pre-market scanner for finding trading opportunities.
 Runs daily before market open to build dynamic watchlist.
 """
 import asyncio
-from typing import List, Dict, Optional, Set
-from datetime import datetime, timedelta
+from typing import List, Dict, Optional
+from datetime import datetime
 import structlog
 
 from config.settings import get_settings
 from src.data.historical.alpaca_client import get_historical_client, AlpacaHistoricalClient
 from src.data.scanner.criteria import (
-    ScannerCriteria, ScanResult, ScanType,
-    GapCriteria, VolumeCriteria, MomentumCriteria
+    ScannerCriteria, ScanResult, ScanType
 )
 from src.data.models.market_snapshot import BarTimeframe
 from src.core.event_bus import get_event_bus, EventType, Event
-from src.utils.helpers import is_premarket
 
 logger = structlog.get_logger()
 settings = get_settings()
@@ -86,7 +84,7 @@ class PremarketScanner:
                     continue
 
                 all_results.extend(results)
-                logger.info(f"scan_complete", scan_type=scan_type.value, results=len(results))
+                logger.info("scan_complete", scan_type=scan_type.value, results=len(results))
 
             except Exception as e:
                 logger.error("scan_error", scan_type=scan_type.value, error=str(e))

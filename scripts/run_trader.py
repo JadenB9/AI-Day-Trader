@@ -16,13 +16,13 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from config.settings import get_settings
 from src.utils.logging import setup_logging
-from src.utils.helpers import is_market_open, is_premarket, get_eastern_time, time_until_market_open, get_trading_capital, is_capital_depleted, get_available_capital
-from src.core.event_bus import get_event_bus, EventType, Event
+from src.utils.helpers import is_market_open, is_premarket, time_until_market_open, get_trading_capital, is_capital_depleted, get_available_capital
+from src.core.event_bus import get_event_bus
 from src.data.streams.alpaca_stream import AlpacaStream
 from src.data.historical.alpaca_client import get_historical_client
-from src.data.scanner.watchlist import get_watchlist, initialize_watchlist
+from src.data.scanner.watchlist import initialize_watchlist
 from src.indicators.calculator import get_calculator, enrich_snapshot
-from src.strategies.registry import get_registry, register_all_strategies, StrategyEngine
+from src.strategies.registry import register_all_strategies, StrategyEngine
 from src.ai.decision_engine import get_decision_engine
 from src.risk.daily_limits import init_limits_manager
 from src.risk.validators import get_validator, PortfolioState
@@ -386,8 +386,8 @@ class TradingEngine:
             pass
 
         # Process each signal
-        for signal in signals:
-            await self._process_signal(signal, snapshot)
+        for sig in signals:
+            await self._process_signal(sig, snapshot)
 
     async def _process_signal(self, signal, snapshot) -> None:
         """

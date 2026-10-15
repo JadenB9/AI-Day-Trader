@@ -2,10 +2,10 @@
 Anthropic Claude API client wrapper.
 """
 import asyncio
-from typing import Optional, Dict, List, Any
+from typing import Optional, Dict, Any
 import time
 import structlog
-from anthropic import Anthropic, AsyncAnthropic
+from anthropic import AsyncAnthropic
 
 from config.settings import get_settings
 from src.core.exceptions import AIError, AITimeoutError, AIRateLimitError

@@ -2,14 +2,13 @@
 Daily and weekly loss limits management.
 Circuit breakers for risk control.
 """
-from typing import Optional, Dict, List
+from typing import Optional, Dict
 from datetime import datetime, date, timedelta
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 import structlog
 
 from config.settings import get_settings
 from src.core.event_bus import get_event_bus, EventType, Event
-from src.core.exceptions import DailyLossLimitExceeded, WeeklyLossLimitExceeded
 
 logger = structlog.get_logger()
 settings = get_settings()

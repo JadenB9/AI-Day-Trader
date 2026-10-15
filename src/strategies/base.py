@@ -151,13 +151,11 @@ class Strategy(ABC):
     @abstractmethod
     def name(self) -> str:
         """Unique strategy name"""
-        pass
 
     @property
     @abstractmethod
     def description(self) -> str:
         """Brief description of the strategy"""
-        pass
 
     @abstractmethod
     def get_required_indicators(self) -> List[str]:
@@ -165,7 +163,6 @@ class Strategy(ABC):
         List of indicator names required by this strategy.
         Should match names from IndicatorCalculator.
         """
-        pass
 
     @abstractmethod
     def generate_signal(
@@ -185,7 +182,6 @@ class Strategy(ABC):
         Returns:
             Signal if conditions met, None otherwise
         """
-        pass
 
     def validate_conditions(
         self,

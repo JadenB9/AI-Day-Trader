@@ -4,7 +4,6 @@ Uses alpaca-py (new SDK).
 """
 import asyncio
 from typing import Set, Callable, Optional, Dict, List
-from datetime import datetime
 import structlog
 
 from alpaca.data.live import StockDataStream
@@ -12,7 +11,7 @@ from alpaca.data.models import Quote as AlpacaQuote, Trade as AlpacaTrade, Bar a
 
 from config.settings import get_settings
 from src.core.event_bus import get_event_bus, EventType, Event
-from src.core.exceptions import StreamDisconnected, ConnectionError as ConnError
+from src.core.exceptions import StreamDisconnected
 from src.data.models.market_snapshot import Quote, Trade, Bar, BarTimeframe
 
 logger = structlog.get_logger()

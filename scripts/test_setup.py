@@ -38,7 +38,7 @@ async def test_alpaca():
         from src.execution.alpaca_broker import get_broker
         broker = get_broker()
         account = await broker.get_account()
-        print(f"   ✓ Connected to Alpaca")
+        print("   ✓ Connected to Alpaca")
         print(f"   ✓ Account equity: ${account['equity']:,.2f}")
         print(f"   ✓ Buying power: ${account['buying_power']:,.2f}")
         return True

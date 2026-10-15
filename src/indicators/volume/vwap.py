@@ -3,7 +3,7 @@ VWAP (Volume Weighted Average Price) indicator.
 """
 from typing import List, Optional, Tuple
 import numpy as np
-from datetime import datetime, time
+from datetime import datetime
 
 from src.indicators.base import Indicator
 from src.data.models.market_snapshot import Bar

@@ -2,7 +2,7 @@
 Pre-trade validation.
 Gate-keeper that validates all trades before execution.
 """
-from typing import Optional, List, Dict, Tuple
+from typing import Optional, Dict
 from dataclasses import dataclass
 from enum import Enum
 import structlog
@@ -11,10 +11,6 @@ from config.settings import get_settings
 from src.strategies.base import Signal, SignalDirection
 from src.risk.daily_limits import get_limits_manager, DailyLimitsManager
 from src.risk.position_sizer import PositionSizer
-from src.core.exceptions import (
-    RiskLimitExceeded, PositionLimitExceeded,
-    InsufficientFunds, OrderRejected
-)
 
 logger = structlog.get_logger()
 settings = get_settings()

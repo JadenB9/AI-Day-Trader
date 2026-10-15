@@ -2,14 +2,12 @@
 Order lifecycle management.
 Tracks orders from signal to fill.
 """
-import asyncio
-from typing import Optional, Dict, List, Any
+from typing import Optional, Dict, List
 from datetime import datetime
-from dataclasses import dataclass, field
-from enum import Enum
+from dataclasses import dataclass
 import structlog
 
-from src.execution.alpaca_broker import get_broker, AlpacaBroker, OrderType, OrderStatus
+from src.execution.alpaca_broker import get_broker, AlpacaBroker, OrderType
 from src.strategies.base import Signal, SignalDirection
 from src.risk.position_sizer import PositionSizer
 from src.risk.stop_manager import get_stop_manager

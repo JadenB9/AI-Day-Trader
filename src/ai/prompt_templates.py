@@ -2,7 +2,7 @@
 Prompt templates for AI decision engine.
 """
 from typing import Dict, Any
-from src.strategies.base import Signal, SignalDirection
+from src.strategies.base import Signal
 
 
 TRADE_ANALYSIS_SYSTEM = """You are an expert day trader AI assistant analyzing potential scalping trades.

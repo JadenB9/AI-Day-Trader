@@ -10,7 +10,6 @@ from src.strategies.base import (
     SignalDirection, SignalType, SignalStrength
 )
 from src.data.models.market_snapshot import MarketSnapshot
-from src.utils.helpers import is_premarket, get_eastern_time
 
 
 class GapAndGo(Strategy):

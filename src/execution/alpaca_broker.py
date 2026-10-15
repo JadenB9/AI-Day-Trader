@@ -21,7 +21,6 @@ from alpaca.trading.enums import (
     OrderSide as AlpacaOrderSide,
     TimeInForce,
     OrderStatus as AlpacaOrderStatus,
-    OrderType as AlpacaOrderType,
     QueryOrderStatus
 )
 

@@ -1,7 +1,7 @@
 """
 Async SQLAlchemy database setup.
 """
-from typing import Optional, AsyncGenerator
+from typing import AsyncGenerator
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 from sqlalchemy.orm import DeclarativeBase
 from contextlib import asynccontextmanager
@@ -13,7 +13,6 @@ settings = get_settings()
 
 class Base(DeclarativeBase):
     """Base class for all models"""
-    pass
 
 
 # Engine singleton
@@ -50,7 +49,6 @@ async def init_db() -> None:
     engine = get_engine()
     async with engine.begin() as conn:
         # Import models so they're registered with Base
-        from storage.models.trade import Trade, Signal, DailySummary, Position
         await conn.run_sync(Base.metadata.create_all)
 
 

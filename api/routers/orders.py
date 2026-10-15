@@ -1,7 +1,7 @@
 """
 Orders router - View and manage orders.
 """
-from typing import Optional, List
+from typing import Optional
 from fastapi import APIRouter, HTTPException
 
 from src.execution.alpaca_broker import get_broker, OrderType as BrokerOrderType

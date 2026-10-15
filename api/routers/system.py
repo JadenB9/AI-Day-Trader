@@ -4,13 +4,13 @@ System router - Start/stop trading engine, get system status.
 import asyncio
 import uuid
 from datetime import datetime
-from typing import Optional, List, Dict
+from typing import List, Dict
 from collections import deque
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter
 
 from config.settings import get_settings
 from src.execution.alpaca_broker import get_broker
-from api.schemas.models import SystemStatus, SystemAction
+from api.schemas.models import SystemStatus
 
 router = APIRouter()
 settings = get_settings()

@@ -2,7 +2,7 @@
 Base interface for technical indicators.
 """
 from abc import ABC, abstractmethod
-from typing import List, Dict, Any, Optional, Union
+from typing import List, Dict, Any, Optional
 from dataclasses import dataclass
 import pandas as pd
 import numpy as np
@@ -44,12 +44,10 @@ class Indicator(ABC):
         Returns:
             Indicator value or None if insufficient data
         """
-        pass
 
     @abstractmethod
     def required_bars(self) -> int:
         """Minimum bars needed for calculation"""
-        pass
 
     def update(self, bar: Bar) -> Optional[float]:
         """

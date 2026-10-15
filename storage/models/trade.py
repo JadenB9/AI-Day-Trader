@@ -3,7 +3,7 @@ Database models for trade logging and tracking.
 """
 from datetime import datetime
 from typing import Optional
-from sqlalchemy import String, Float, Integer, DateTime, Boolean, Text, Enum as SQLEnum
+from sqlalchemy import String, Float, Integer, DateTime, Boolean, Text
 from sqlalchemy.orm import Mapped, mapped_column
 from enum import Enum
 
