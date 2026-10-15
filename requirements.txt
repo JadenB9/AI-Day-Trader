@@ -1,40 +1,41 @@
-# AI Day Trading System Requirements
+# AI Day Trading System
+# Floors are the versions this was last run against; the caps keep a major
+# bump from landing silently. Needs Python 3.11+.
 
-# Alpaca Trading API (new SDK)
-alpaca-py>=0.21.0
+# Alpaca trading and market data
+alpaca-py>=0.44,<1
 
-# Technical Analysis
-pandas>=2.0.0
-pandas-ta>=0.3.14b
-numpy>=1.24.0
+# Numerics for the indicator library
+numpy>=2.0,<3
+pandas>=2.2,<4
 
-# Anthropic AI
-anthropic>=0.39.0
+# Claude review and hourly research
+anthropic>=1.15,<2
 
-# Async Database
-sqlalchemy[asyncio]>=2.0.0
-aiosqlite>=0.19.0
+# Async storage
+sqlalchemy[asyncio]>=2.0,<3
+aiosqlite>=0.22,<1
 
 # Configuration
-pydantic>=2.0.0
-pydantic-settings>=2.0.0
-python-dotenv>=1.0.0
+pydantic>=2.14,<3
+pydantic-settings>=2.16,<3
+python-dotenv>=1.2,<2
 
-# Structured Logging
-structlog>=23.0.0
+# Logging, time zones, HTTP
+structlog>=26.1,<27
+pytz>=2026.5
+aiohttp>=3.14,<4
+httpx>=0.28,<1
 
-# Timezone Support
-pytz>=2023.3
+# Dashboard API (api/)
+fastapi>=0.143,<1
+uvicorn[standard]>=0.54,<1
+websockets>=17,<18
+python-multipart>=0.0.32,<1
 
-# HTTP
-aiohttp>=3.9.0
-httpx>=0.25.0
-
-# Testing
-pytest>=7.4.0
-pytest-asyncio>=0.21.0
-
-# Development
-black>=23.0.0
-isort>=5.12.0
-flake8>=6.0.0
+# Tests and lint
+pytest>=9.1,<10
+pytest-asyncio>=1.4,<2
+black>=26.10,<27
+isort>=9.0,<10
+flake8>=7.4,<8
