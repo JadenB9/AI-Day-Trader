@@ -81,7 +81,7 @@ log_success "All required commands available"
 
 # Check if .env exists
 if [ ! -f ".env" ]; then
-    log_error ".env file not found. Please create it with your API keys."
+    log_error ".env file not found. Copy .env.example to .env and fill in your keys."
     echo "  Required keys: ALPACA_API_KEY, ALPACA_SECRET_KEY, ANTHROPIC_API_KEY"
     exit 1
 fi
@@ -132,8 +132,8 @@ log_info "Checking Python dependencies..."
 # Check if requirements need updating
 pip install --quiet --upgrade pip
 
-# Install core dependencies if missing
-pip install --quiet anthropic alpaca-py structlog fastapi uvicorn websockets python-multipart pydantic pydantic-settings pytz aiosqlite 2>/dev/null || {
+# Everything the engine and the API need, pinned in requirements.txt
+pip install --quiet -r requirements.txt || {
     log_warn "Some packages may need manual installation"
 }
 
