@@ -2,7 +2,6 @@
 Pydantic settings for the AI Day Trading System.
 All configuration centralized here - other modules import from this.
 """
-import os
 from typing import List, Optional
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -194,7 +193,7 @@ class DashboardSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="DASHBOARD_", env_file=".env", extra="ignore")
 
     enabled: bool = Field(default=True)
-    host: str = Field(default="0.0.0.0")
+    host: str = Field(default="127.0.0.1")  # loopback only; the API can start and stop trading
     port: int = Field(default=8000)
     cors_origins: List[str] = Field(default=["http://localhost:5173", "http://localhost:3000"])
     api_key: Optional[str] = Field(default=None)  # Optional API key auth
